@@ -9,16 +9,28 @@ import rasterio
 from rasterio import mask
 import numpy as np
 from datetime import datetime
-import os
-from os import listdir
+import pyproj
+from shapely.ops import transform
 
-def get_ndvi_mean(fname):
+def get_ndvi_mean(
+        fname: str,
+        shape: pd.core.series.Series,
+        aoi_crs: pyproj.crs.crs.CRS)-> tuple:
     
-    path = 'C:\\Projetos\\bioflore\\ecosia\\PSdata\\'
-    src1 = rasterio.open(path + fname)
-    sr_data = src1.read()
+    
+    # path = 'C:\\Projetos\\bioflore\\ecosia\\PSdata\\'
+    src1 = rasterio.open(fname)
+    project = pyproj.Transformer.from_crs(aoi_crs, src1.crs, always_xy=True).transform
+    reprojected = transform(project, shape['geometry'])
+    
+    
+    geom = [reprojected.__geo_interface__]
+    clipped_array, clipped_transform = mask(dataset=src1, shapes=geom,
+                                            crop=True)
 
-    src2 = rasterio.open(path + fname.replace('.tif', '_QA.tif'))
+    sr_data = clipped_array.read()
+
+    src2 = rasterio.open(fname.replace('.tif', '_QA.tif'))
     qa_data = src2.read(1)
     
     mask_array = np.where(qa_data == 0, 0, 1)
@@ -42,15 +54,3 @@ def get_ndvi_mean(fname):
     
     return result
 
-work_dir = 'C:\\Projetos\\bioflore\\ecosia'
-os.chdir(work_dir)
-
-files = [ f for f in listdir("PSdata")  if 'QA.tif' not in f]
-
-result_list = []
-for f in files:
-    result_list.append(get_ndvi_mean(f))
-
-df = pd.DataFrame(result_list, columns=['date', 'ndvi_mean', 'talhao'])
-
-df.to_csv(work_dir + '/' + 'resultado_22062024.csv', index=False)
