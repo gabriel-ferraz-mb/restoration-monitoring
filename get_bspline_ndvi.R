@@ -4,11 +4,13 @@ library(zoo)
 library(tidyverse)
 rm(list = ls())
 
-tab<-read.table("C:/Projetos/bioflore/ecosia/resultado_22062024.csv", sep=",")
+tab<-read.table("C:\\Projetos\\bioflore\\gbs-uganda\\spreadsheets/result_sites_ndvi.csv",
+                sep=",")
+
 colnames(tab)<-tab[1,]
 tab<-tab[2:nrow(tab),]
 tab$ndvi_mean<-as.numeric(tab$ndvi_mean)
-
+tab = tab[complete.cases(tab), ]
 labels <- as.list(unique(tab$talhao))
 
 result <- data.frame(date=as.Date(character()),
@@ -62,6 +64,9 @@ for (label in labels){
   result <- rbind(result, df)
 }
 
-write.csv(result, "C:\\Projetos\\bioflore\\ecosia\\Ecosia\\bspline_ndvi.csv", row.names=FALSE)
+result <- result %>%
+  filter(date < as.POSIXct("2024-08-01"))
+
+write.csv(result, "C:\\Projetos\\bioflore\\gbs-uganda\\spreadsheets/bspline_ndvi_lmite.csv", row.names=FALSE)
 #combined_df <-  do.call(rbind, df_list)
 #dev.off()

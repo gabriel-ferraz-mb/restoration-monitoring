@@ -30,7 +30,7 @@ import logging
 import boto3
 # gpd.io.file.fiona.drvsupport.supported_drivers['LIBKML'] = 'rw'
 
-os.chdir(r'C:\Projetos\bioflore\ecosia\Ecosia')
+os.chdir(r'C:\Projetos\bioflore\gbs-madagascar')
          
 load_dotenv(find_dotenv())
 
@@ -41,21 +41,8 @@ API_KEY = os.getenv('PL_API_KEY')
 ACCESS_KEY = os.getenv('ACCESS_KEY')
 SECRET_KEY = os.getenv('SECRET_KEY')
 
-# Specify the S3 bucket name
-# global BUCKET_NAME
-# BUCKET_NAME = 'research-bioflore'
-
-# global s3_folder
-# s3_folder = "Database/Projetos/Ecosia/Raw_data/PlanetScope/"
-
-# global s3
-# s3 = boto3.resource('s3', aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_KEY)
-
-# for bucket in s3.buckets.all():
-#   print(bucket.name)
-
 global directory
-directory = r"C:\Projetos\bioflore\ecosia"
+directory = r"C:\Projetos\bioflore\gbs-madagascar"
 now = datetime.datetime.today().strftime('%Y-%m-%dT%H%M%S.%fZ')
 
 logging.basicConfig(
@@ -67,10 +54,13 @@ logging.basicConfig(
 
 # Define our AOI (Area of Interest)
 # Read the shapefile
-gdf = gpd.read_file(directory + "/geo/merge_ipe_espi.shp")
-gdf = gdf.to_crs(4326)
+gdf = gpd.read_file(r"C:\Projetos\bioflore\gbs-madagascar\geo\Andohahela_parcel_I_&_II\Andohahela_parcel_I_&_II.shp")
+# gdf2 = gpd.read_file(directory + "/geo/Contract174_Polygons.gpkg")
+gdf = gdf.head(1)
 
-gdf = gdf[gdf['Name'] == "ESP_RE"]
+
+# rdf = gpd.GeoDataFrame( pd.concat( [gdf1, gdf2], ignore_index=True) )
+gdf.crs = "EPSG:4326"
 
 logging.info('Initializing process...')
 
@@ -93,8 +83,26 @@ def remove_z_gen_aoi(geometry: gpd.geodataframe.GeoDataFrame) -> dict:
         return aoi
     except Exception as e:
        logging.error(f'Treat Polygon: {e}')
-
-# aoi = remove_z_gen_aoi(gdf['geometry'][0])
+       
+def gen_aoi(geometry: gpd.geodataframe.GeoDataFrame) -> dict:
+    try:
+        # geometry = gdf['geometry'][0]
+        exterior = geometry.exterior.coords[:-1]  # Drop the z value for exterior
+        flattened_exterior = [(x, y) for x, y in exterior]  # Keep only (x, y)
+        
+        flattened_interiors = []
+        for interior in geometry.interiors:
+            interior_coords = interior.coords[:-1]  # Drop the z value for interior
+            flattened_interior = [(x, y) for x, y, z in interior_coords]
+            flattened_interiors.append(flattened_interior)
+        
+        # Create a new 2D Polygon
+        flattened_polygon = Polygon(flattened_exterior, flattened_interiors)
+        # Convert the GeoJSON geometry to a Python dict
+        aoi = mapping(flattened_polygon)
+        return aoi
+    except Exception as e:
+       logging.error(f'Treat Polygon: {e}')
 
 def request_planet_ids(aoi : dict, gte : str, lte: str,\
                        cloud: float, item_types: list, ) -> pd.DataFrame:
@@ -272,8 +280,7 @@ def request_download_urls_planet(ids_list, item_type, asset_type,
         
         # request an item
         url_req =  f"https://api.planet.com/compute/ops/orders/v2/{order_id}"
-        # url_req =  f"https://api.planet.com/compute/ops/orders/v2/fa61f735-5bc2-433f-a8f6-1983d511344b"
-
+        
         item = \
           session.get(url_req
            )
@@ -300,8 +307,7 @@ def request_download_urls_planet(ids_list, item_type, asset_type,
     except Exception as e:
         logging.error(f'Download Request: {e}')  
      
-
-def get_ndvi_mean(url_name, talhao):
+def download_from_url(url_name, talhao):
     try:
         # url_name = pairs[0]
         urls = list(url_name.values())
@@ -311,67 +317,62 @@ def get_ndvi_mean(url_name, talhao):
         
         response1 = requests.get(urls[1])
         img_data1 = response1.content
-        with open(directory +'/PSdata/'+ img_name, 'wb') as handler:
+        with open(directory +'/PSData/'+ img_name, 'wb') as handler:
             handler.write(img_data1)
         # s3.Bucket(BUCKET_NAME).upload_file(directory +'/'+ img_name,
         #                               s3_folder + img_name)
-        src1 = rasterio.open(BytesIO(response1.content))
-        sr_data = src1.read()
+        # src1 = rasterio.open(BytesIO(response1.content))
+        # sr_data = src1.read()
 
         response2 = requests.get(urls[0])
         img_data2 = response2.content
-        with open(directory +'/'+ qa_name, 'wb') as handler:
+        with open(directory +'/PSData/'+ qa_name, 'wb') as handler:
             handler.write(img_data2)
         # s3.Bucket(BUCKET_NAME).upload_file(directory +'/'+ qa_name,
         #                               s3_folder +  qa_name)
-        src2 = rasterio.open(BytesIO(response2.content))
-        qa_data = src2.read(1)
+        # src2 = rasterio.open(BytesIO(response2.content))
+        # qa_data = src2.read(1)
         
-        mask_array = np.where(qa_data == 0, 0, 1)
+        # mask_array = np.where(qa_data == 0, 0, 1)
         
         # Apply the mask to the surface reflectance raster
-        masked_sr_data = sr_data * mask_array
+        # masked_sr_data = sr_data * mask_array
         
-        nir_band = masked_sr_data[3]
-        red_band = masked_sr_data[2]
-        ndvi = (nir_band - red_band) / (nir_band + red_band)
-        ndvi_mean = np.nanmean(ndvi, dtype=np.float64)
+        # nir_band = masked_sr_data[3]
+        # red_band = masked_sr_data[2]
+        # ndvi = (nir_band - red_band) / (nir_band + red_band)
+        # ndvi_mean = np.nanmean(ndvi, dtype=np.float64)
         
-        result = (date, ndvi_mean, talhao)
+        # result = (date, ndvi_mean, talhao)
         
         # os.remove(directory +'/'+ img_name)
         # os.remove(directory +'/'+ qa_name)
         
-        return result
+        return
     except Exception as e:
         logging.error(f'Get NDVI: {e}')  
         
+for limite, talhao in gdf[['geometry', 'SITE_NAME1',
+                            ]].itertuples(index=False):
 
-result_list = []
-for limite, talhao, a, m, d in gdf[['geometry', 'Name',
-                           'Ano_plant', 'Mes_plant', 'Dia_plant']].itertuples(index=False):
-    logging.info(f'***********Starting parcel {talhao}***********')
-    # talhao
     # comment later
-    # limite = gdf['geometry'][3]
-    # talhao = gdf['Name'][3]
-    # a = gdf['Ano_plant'][3]
-    # m = gdf['Mes_plant'][3]
-    # d = gdf['Dia_plant'][3]
-    # if not os.path.exists(d + '/' + tal ao):
-    #     os.makedirs(d + '/' + talhao)
+    # limite = gdf['geometry'][0]
+    # talhao = 'extension'
+        # continue
+    plantig_date = '2022-01-01'
     
     item_type = 'PSScene'
     asset_type = "analytic_sr_udm2"
-    # ids_list = []
+    
+    logging.info(f'***********Starting parcel {talhao}***********')
     
     if not limite.is_valid:
         logging.info(f'Polygon {talhao} not valid. Correction applied')
         limite = limite.buffer(0)
         
-    aoi = remove_z_gen_aoi(limite)
+    aoi = gen_aoi(limite)
     
-    sd = datetime.datetime(int(a), int(m), int(d)).strftime(
+    sd = datetime.datetime.strptime(plantig_date, "%Y-%m-%d").strftime(
         '%Y-%m-%dT%H:%M:%S.%fZ')
     ed = datetime.datetime.today().strftime(
         '%Y-%m-%dT%H:%M:%S.%fZ')
@@ -379,19 +380,21 @@ for limite, talhao, a, m, d in gdf[['geometry', 'Name',
     ids = request_planet_ids(aoi, sd,\
                        ed, 0.1, [item_type])
     
-
+    # if ids is None:
+    #     continue
     # Create a new column 'fully_intersects' with boolean values
     ids['fully_intersects'] = ids.apply(check_intersection, axis=1)
-
-
+    
+        
     # Filter out rows that do not fully intersect with the polygon
     filtered_ids = ids[ids['fully_intersects']]
     idx_min = filtered_ids.groupby(filtered_ids['date'].dt.to_period('M'))['cloud'].idxmin()
     r = filtered_ids.loc[idx_min]
     
+    # len(r)
+    
     chunked_ids = list(chunks(r['id'].tolist(), 500))
-    # chunked_ids = r['id'].tolist()
-   
+       
     dwnld_dict = {}
     for i in chunked_ids:
         # i = chunked_ids[0]
@@ -401,171 +404,15 @@ for limite, talhao, a, m, d in gdf[['geometry', 'Name',
         order_name = f'talhao_{talhao}_{now}'
         dwnld_dict.update(request_download_urls_planet(i, item_type, asset_type,
                                                        aoi, order_name))
-    with open(directory + "/download_dict.txt", 'r') as file:
+    with open(directory + "/donwload_dict.txt", 'r') as file:
         data = file.read().replace('\n', '')
     
     pairs = list(get_pairs(dwnld_dict))
     
     for pair in pairs:
-        result_list.append(get_ndvi_mean(pair, talhao))
-        
-df = pd.DataFrame(result_list, columns=['date', 'ndvi_mean', 'talhao'])
-
-df.to_csv(directory + '/' + 'resultado_esp_re.csv', index=False)
-logging.info('Process Complete!')    
+        download_from_url(pair, talhao)
+            
     
+    logging.info('Process Complete!')    
     
-    # for k, geom, date_acq in ids[:1][['id', 'geom', 'date']].itertuples(index=False):
-    #     # print(element[1])
-    #     grid = shape(geom)
-
-    #     if not grid.contains_properly(limite):
-    #         continue
-    
-    #     session = requests.Session()
-    #     session.auth = (API_KEY, '')
-        
-    #     call = {
-    #        "name":"simple order",
-    #        "source_type": "scenes",
-    #        "products":[
-    #           {
-    #              "item_ids":[
-    #                k
-    #              ],
-    #              "item_type":item_type,
-    #              "product_bundle":asset_type
-    #           }
-    #        ],
-    #    "tools": [
-    #        {
-    #            "clip": {
-    #                "aoi": aoi
-    #                }
-    #            }
-    #        ]
-    #     }
-      
-    #     req = session.post( 'https://api.planet.com/compute/ops/orders/v2', 
-    #                       json=call)
-        
-    #     data_req = req.json()
-    #     order_id = data_req['id']
-        
-    #     # request an item
-    #     url_req =  f"https://api.planet.com/compute/ops/orders/v2/{order_id}"
-        
-    #     item = \
-    #       session.get(url_req
-    #        )
-        
-    #     data_dwnld = item.json()
-        
-    #     data_path = d + '/' + talhao + '/'+ date_acq.strftime('%Y-%m-%dT%H%M%S') + '_' + data_dwnld['id']
-        
-    #     if not os.path.exists(data_path):
-    #         os.makedirs(data_path)
-            
-    #     while 'results' not in data_dwnld['_links']:
-    #         # print('waiting req to be completed')
-    #         time.sleep(120)
-    #         item = \
-    #           session.get(url_req
-    #            )
-            
-    #         data_dwnld = item.json()
-        
-    #     # extract the activation url from the item for the desired asset
-    #     for i in data_dwnld['_links']['results']:
-    #         if i['name'].endswith('SR_clip.tif'):
-    #             response1 = requests.get(i['location'])
-    #             src1 = rasterio.open(BytesIO(response1.content))
-    #             sr_data = src1.read()
-    #         elif i['name'].endswith('udm2_clip.tif'):
-    #             response2 = requests.get(i['location'])
-    #             src2 = rasterio.open(BytesIO(response2.content))
-    #             qa_data = src2.read(1)
-            
-        
-    #     # Create a mask where QA band 1 values are equal to 0
-    #     mask_array = np.where(qa_data == 0, 0, 1)
-        
-    #     # Apply the mask to the surface reflectance raster
-    #     masked_sr_data = sr_data * mask_array
-        
-    #     nir_band = masked_sr_data[3]
-    #     red_band = masked_sr_data[2]
-    #     ndvi = (nir_band - red_band) / (nir_band + red_band)
-    #     np.nanmean(ndvi, dtype=np.float64)
-    #     # ndvi_mask = ndvi * mask_array
-    #     # Update the profile to reflect the changes in the data and write the output
-        
-    #     # dst_path = data_path + '/' + 'ndvi_mask.tif'
-    #     # profile = src1.profile
-                
-    #     # with rasterio.open(dst_path,'w', **profile) as dst:
-    #     #                     dst.write(ndvi)
-
-# import os
-# os.system('whoami')
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        # res = requests.get(url_req ,
-        #                     auth=HTTPBasicAuth(API_KEY, ''))
-        
-        # data_dwnld = res.json()
-        # url_dwnld = data_dwnld['ortho_analytic_4b_sr']['location']
-         
-        # img_data = requests.get(url_dwnld).content
-        # img_name = d + item_date.replace(':', '-') + '_ortho_analytic_4b_sr.tiff'
-        
-            
-        # if not Path(img_name).is_file():
-        #     with open(img_name, 'wb') as handler:
-        #         handler.write(img_data)
-        
-        # dataset = rasterio.open(img_name)
-        # raster_crs = dataset.crs
-        
-        
-        # # Convert the CRS of the polygon to match the CRS of the raster dataset
-        # gdf_corr = gdf.to_crs(raster_crs)[['Name', 'geometry']]
-        
-        # for name, geo in gdf_corr.itertuples(index=False):
-        #     print(name)
-        #     type(geo)
-            
-        #     part_d = d+name
-        #     if not os.path.exists(part_d):
-        #         os.makedirs(part_d)
-            
-        #     # Crop the raster dataset with the polygon
-        #     clipped, out_transform = mask(dataset,[geo], crop=True)
-           
-        #     # Get the metadata of the cropped raster
-        #     meta = dataset.meta
-            
-        #     # Update metadata with new information
-        #     meta.update({"driver": "GTiff",
-        #                  "height": clipped.shape[1], 
-        #                  "width": clipped.shape[2],
-        #                  "transform": out_transform})
-            
-        #     # Save the cropped raster to a new file
-        #     output_file = part_d + "/" + item_date.strftime('%Y-%m') + \
-        #        "_" + name + 'ortho_analytic_4b_sr.tiff'
-            
-        #     with rasterio.open(output_file, "w", **meta) as dst:
-        #         dst.write(clipped)
-                
-        # os.remove(img_name)
-        
+  

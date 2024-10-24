@@ -6,27 +6,62 @@ library(terra)
 library(lubridate)
 library(scales) # For the scales::squish function
 
-setwd('C:\\Projetos\\bioflore\\ecosia')
+get_utm_zone <- function(lon) {
+  return(floor((lon + 180) / 6) + 1)
+}
+
+# Function to convert sf object to appropriate UTM
+transform_to_utm <- function(sf_object) {
+  # Ensure the sf object is in a geographic CRS
+  if (st_crs(sf_object)$epsg != 4326) {
+    sf_object <- st_transform(sf_object, crs = 4326)
+  }
+  
+  # Calculate the centroid of the sf object
+  centroid <- st_centroid(st_geometry(sf_object))
+  centroid_coords <- st_coordinates(centroid)
+  
+  # Determine the UTM zone
+  centroid_lon <- centroid_coords[1, 1]
+  centroid_lat <- centroid_coords[1, 2]
+  utm_zone <- get_utm_zone(centroid_lon)
+  
+  # Construct the UTM CRS
+  utm_crs <- if (centroid_lat >= 0) {
+    sprintf("+proj=utm +zone=%d +datum=WGS84 +units=m +no_defs", utm_zone)
+  } else {
+    sprintf("+proj=utm +zone=%d +datum=WGS84 +units=m +no_defs +south", utm_zone)
+  }
+  
+  # Reproject the sf object
+  utm_sf_object <- st_transform(sf_object, crs = utm_crs)
+  return(utm_sf_object)
+}
+
+setwd('C:\\Projetos\\bioflore\\gbs-uganda')
 #2. Read in the shapefile containing the polygons.
 
-shapefile_path <- "geo\\merge_ipe_espi.shp"
+shapefile_path <- "geo\\shp\\restoration_sites.shp"
 polygons <- st_read(shapefile_path)
-polygons <- st_transform(polygons, crs = 4326)
+polygons <- transform_to_utm(polygons)
 #3. List all the raster files in your directory.
 
-raster_directory <- "NDFI"
-raster_files <- list.files(raster_directory, pattern = "\\.tif$", full.names = TRUE)
+raster_directory <- "geo\\NDFI"
+raster_files <- list.files(raster_directory,
+                           pattern = "\\.tif$",
+                           full.names = TRUE,
+                           recursive = T)
 
 #4. Loop through each raster file and match it with the corresponding polygon.
 for (raster_file in raster_files) {
- # raster_file = raster_files[1]
+  # raster_file = raster_files[[1]]
   # Extract the label and date from the raster file name (assuming the filename format is consistent)
   label_date <- gsub(".tif", "", basename(raster_file))
   
   # Split the label and date from the filename or use a regex if needed
   parts <- strsplit(label_date, "_")[[1]]  # Assuming filename always has a separator like _
-  label <- paste0(parts[1],"_",parts[2])
-  date <- parts[3]
+  label <- parts[1]
+  date <- parts[2]
   
   # Filter the polygons to find the corresponding polygon
   matching_polygon <- polygons[polygons$Name == label, ]
@@ -34,7 +69,7 @@ for (raster_file in raster_files) {
   if (nrow(matching_polygon) > 0) {
     # Read the raster data
     raster_data <- rast(raster_file)
-    raster_data <- terra::project(raster_data, "EPSG:4326")
+    # raster_data <- terra::project(raster_data, "EPSG:4326")
     
     # Convert raster to data frame and rename columns appropriately
     raster_df <- as.data.frame(terra::as.data.frame(raster_data, xy = TRUE), xy = TRUE)
@@ -50,8 +85,9 @@ for (raster_file in raster_files) {
       theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
             axis.text.y = element_text(size = 8))
     
-    # Save or display the plot
-    ggsave(paste0("maps_ndfi\\map_", label, "_", date, ".png"), plot = p)
+    dir <- paste0("png\\maps_ndfi\\", label,"\\")
+    dir.create(dir, showWarnings = FALSE)
+    ggsave(paste0(dir,"map_",label,"_", date, ".png"), plot = p)
     print(p)
   } else {
     message("No matching polygon found for ", label, " on ", date)

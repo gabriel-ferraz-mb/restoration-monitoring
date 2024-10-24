@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "bioflore-359700",
+  "private_key_id": "91d05e3504f41c71f6100cdeb43785928aa5af88",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDYZC4HQ6+G14Y/\nufXbBnRH2MmSBdg3SxLIy3AVYe7bftbI6Cpe3pVOHklqeReI3it4kWMgTx9CMz/m\n4LhVjezBoJybZo5Kv4HYyV0R3IVYLuiQAkQPvUc/0JTPqk9Cz5scqvu/JjHD3yog\nmI4KRNRePu7ysd7QKElguCVdppF/TxW/fVKvhI7WpM6xi9nn1Dub0XUAFCAGcs7Z\n6IvIMboO8/zyrKRBnJf6CKyZvbkhyzVywGiYTcTlejPusVBtflWlD+ajz75/W7N8\nOg3mL72IVqioC3iqHZ7/9Bvqp1OiyW28Jv2dcRr8ARVn7gGvB7IpyZaxAyhApoDD\nEUhiHdz9AgMBAAECggEAEMPr1p9yR53TLOsysGS9ONCdbWhxt0PKkZWrE9ahzVr0\nBF5yFr+Wc2L6IftLAE1Jf1UXiDbl7Evqm4mCcdgSvwqIMUVID2QfCOjKnGOotFha\n2scSKhYEIZGYT5UAALEmpDLEwBHGSuKzcasTXJnqMKy3kd4hR6D91M+8aJd+Yydc\n93ia1F/KtxFRy1qbrAm3wCG3dSfF48TbsKN025s5DjC/Usq1givFmmlukNuzLmQk\nW9jW+XfQwQ24bMn9AmRMpQKzSvCQSXDBTX2cUwdvesCGGsTvBi02lgxFGjne1wZD\nysbpELbFy5EFHkyKdXF0HsuK9MZwsa7qr9i5ARuVEQKBgQDwrqnhhvQRE+SiToiX\nhdoZjSJQcn56upy6Zz6QsQ46SMqJGAWmca3+aKaXjHorXJMxRlh8V80bWz/oIk0R\nBrXlPugV4+kLYzV/fG44SU7ElnjREXdkLWlCbXmfDelImNd/6b2vu6Vq8MsIhWTJ\nblCbTIiVksoNA7pdf9hES21RXwKBgQDmKcD5W36/903dGLJ6ouKWsNVmb19x0BLu\nTBEpE/0RWVSdQpI+n/2yOQ9ZJCPZaYiLskEj/4uPuQLscXphi5UP0E6uoAETpjNL\nXEGZUlA1S5G6n6loL0ql5XZ/RwiwHwY8gFtQ92HtJyRE0nrnPiNjUzUjd3PCNu6o\n/esWjMxjIwKBgApUpOwOO9mjzfN9hXVjhGoGWcu0LmOcMO/7UH8ral3sE+1wf4WW\naY569XOZzwCfd53s1A16Q06CSyrulfo+HH6bhaCy6KTZfEldkOmPk/byMnte0Y4W\nOOdmBYtjMHkyPkW6Ra8OUdpWPZC/EQVoW8NetJoe89c9KrmqrCC6UBXnAoGAMCuE\n66sud9a2QROuJuR4L7mKsAmXHCbED4N0A/je+gaMIu2P1fN+ERLIF4vsxM/FeBcy\ncupEtyutZPbK+idQZyLdlMZ/8zDRg3AneoMzrjPGqBxKRDfBk77WcgTX2KRllbv3\nYJaltBCBErZKaqMinOMJOAcD/x2oDU43KV0GWakCgYEAiFzHBx/gV7SY7+BGCbA/\nKtH9A4V4Jt21JQB0r6Vi+dj2CLPw0BRTmf0ir0b93s/rrz3iexcQSP8dCMbSQvzj\ntpvG3Gj7Uig0ic3oUX0c3fBChx0DZb4ALeL7b6bjx8r62+bTNI26K34tiBo/W3Gw\nzT8hG23jX9Ol4NWB8YzK1Bw=\n-----END PRIVATE KEY-----\n",
+  "client_email": "gee-bioflore@bioflore-359700.iam.gserviceaccount.com",
+  "client_id": "114835969595756269184",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/gee-bioflore%40bioflore-359700.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
