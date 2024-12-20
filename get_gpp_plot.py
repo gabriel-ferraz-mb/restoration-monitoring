@@ -5,7 +5,7 @@ Created on Tue Jun 11 21:57:02 2024
 @author: Gabriel
 """
 import os
-path = r"C:\Projetos\bioflore\gbs-uganda\spreadsheets"
+path = r"C:\Projetos\bioflore\gbs-kenya\spreadsheets"
 os.chdir(path)
 
 from datetime import datetime, timedelta
@@ -56,7 +56,7 @@ for label in labels:
         # peaks, _ = find_peaks(data['ndvi'], distance=300, prominence=[-0.1,1])
         
         # Detect troughs (which represent the lows in NDVI)
-        troughs, _ = find_peaks(-data['ndvi'], distance=200, prominence=-0.001)
+        troughs, _ = find_peaks(-data['ndvi'], distance=250, prominence=-0.000000000000000001)
     
         # Extracting start and end of seasons
         seasons = []
@@ -120,10 +120,10 @@ for label in labels:
         # Plot the integral values at the center dates on the secondary Y-axis
         ax2.plot(season_centers, integral_values, 'o-', label='Season Integral',
                   color='tab:orange', linewidth=2.0, markersize=7)
-        ax2.annotate("GPP value: " + str(round(integral_values[0],2)),
-                     xy=(start + relativedelta(months=2),integral_values[0]-50),
-                     weight='bold',
-                     size = 14)
+        # ax2.annotate("GPP value: " + str(round(integral_values[0],2)),
+        #              xy=(start + relativedelta(months=2),integral_values[0]-50),
+        #              weight='bold',
+        #              size = 14)
         # ax2.tick_params(axis='y')
         
         # Add legends

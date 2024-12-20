@@ -10,7 +10,7 @@ import pandas
 import json
 import os
 
-os.chdir(r'C:\Projetos\bioflore\gbs-uganda\geo\gfw')
+os.chdir(r'C:\Projetos\bioflore\gbs-kenya\geo\gfw')
 
 # =============================================================================
 # CREATE USER
@@ -148,7 +148,7 @@ def get_extent_as_geodf(gdf):
 
 api_key = '00624f70-1ec7-4631-8b4b-4d4f75b2bbe3'
 
-polygons = gpd.read_file("../shp/restoration_sites.shp")
+polygons = gpd.read_file("../shp/restoration_sites_inner.shp")
 extent = get_extent_as_geodf(polygons)
 j = ast.literal_eval(extent.to_json())
 
@@ -187,16 +187,16 @@ import matplotlib.pyplot as plt
 
 ig, ax = plt.subplots(figsize=(10, 10))
 
-# Plot the polygons
-polygons.boundary.plot(ax=ax, linewidth=1, color='black')
-
 # Plot the points with color based on the 'year' column
 gdf.plot(ax=ax, column='year', cmap='viridis', legend=True, 
          markersize=10, alpha=1)
 
+# Plot the polygons
+polygons.boundary.plot(ax=ax, linewidth=2, color='red')
+
 # Add basemap if needed (optional, requires contextily)
-# import contextily as ctx
-# ctx.add_basemap(ax, crs=gdf.crs.to_string())
+import contextily as ctx
+ctx.add_basemap(ax, crs=gdf.crs.to_string())
 
 # Add title and labels, adjust plot limits
 ax.set_title("Forest Disturbance by Year")

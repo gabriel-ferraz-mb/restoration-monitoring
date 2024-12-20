@@ -1,0 +1,3 @@
+COMMAND: RSTREA~1 --overwrite --verbose elevation="dem_grass" accumulation="flow_accumulation" threshold=1000 mexp=0 stream_length=0 memory=300 stream_raster="streams" stream_vector="streams_vec"
+GISDBASE: C:/Projetos/bioflore/restoration_monitoring/grassdb
+LOCATION: kenya MAPSET: PERMANENT USER: Gabriel DATE: Mon Nov 25 18:38:36 2024

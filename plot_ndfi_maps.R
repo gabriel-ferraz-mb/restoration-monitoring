@@ -38,12 +38,12 @@ transform_to_utm <- function(sf_object) {
   return(utm_sf_object)
 }
 
-setwd('C:\\Projetos\\bioflore\\gbs-uganda')
+setwd('C:\\Projetos\\bioflore\\gbs-kenya')
 #2. Read in the shapefile containing the polygons.
 
 shapefile_path <- "geo\\shp\\restoration_sites.shp"
 polygons <- st_read(shapefile_path)
-polygons <- transform_to_utm(polygons)
+# polygons <- transform_to_utm(polygons)
 #3. List all the raster files in your directory.
 
 raster_directory <- "geo\\NDFI"
@@ -54,22 +54,22 @@ raster_files <- list.files(raster_directory,
 
 #4. Loop through each raster file and match it with the corresponding polygon.
 for (raster_file in raster_files) {
-  # raster_file = raster_files[[1]]
-  # Extract the label and date from the raster file name (assuming the filename format is consistent)
-  label_date <- gsub(".tif", "", basename(raster_file))
+  tryCatch({
+    # Extract the label and date from the raster file name
+    label_date <- gsub(".tif", "", basename(raster_file))
+    
+    # Split the label and date from the filename
+    parts <- strsplit(label_date, "_")[[1]]
+    label <- parts[1]
+    date <- parts[2]
+    
+    # Filter the polygons to find the corresponding polygon
+    matching_polygon <- polygons[polygons$Name == label, ]
+    
   
-  # Split the label and date from the filename or use a regex if needed
-  parts <- strsplit(label_date, "_")[[1]]  # Assuming filename always has a separator like _
-  label <- parts[1]
-  date <- parts[2]
-  
-  # Filter the polygons to find the corresponding polygon
-  matching_polygon <- polygons[polygons$Name == label, ]
-  
-  if (nrow(matching_polygon) > 0) {
     # Read the raster data
     raster_data <- rast(raster_file)
-    # raster_data <- terra::project(raster_data, "EPSG:4326")
+    matching_polygon <- st_transform(matching_polygon, crs = as.character(crs(raster_data)))
     
     # Convert raster to data frame and rename columns appropriately
     raster_df <- as.data.frame(terra::as.data.frame(raster_data, xy = TRUE), xy = TRUE)
@@ -85,11 +85,11 @@ for (raster_file in raster_files) {
       theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
             axis.text.y = element_text(size = 8))
     
-    dir <- paste0("png\\maps_ndfi\\", label,"\\")
-    dir.create(dir, showWarnings = FALSE)
+    dir <- paste0("png/maps_ndfi/", label,"/")
+    dir.create(dir, showWarnings = FALSE, recursive = TRUE)
     ggsave(paste0(dir,"map_",label,"_", date, ".png"), plot = p)
     print(p)
-  } else {
-    message("No matching polygon found for ", label, " on ", date)
-  }
+  }, error = function(e) {
+    message("Error processing ", raster_file, ": ", e$message)
+  })
 }

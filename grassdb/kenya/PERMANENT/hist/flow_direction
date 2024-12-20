@@ -1,0 +1,14 @@
+Mon Nov 25 18:42:41 2024
+flow_direction
+PERMANENT
+Gabriel
+raster
+dem_grass
+
+gerado por RWATER~2
+Processing mode: MFD
+Memory mode: All in RAM
+
+RWATER~2 --overwrite elevation="dem_grass" threshold=1000 accumulati\
+on="flow_accumulation" drainage="flow_direction" convergence=5 memor\
+y=300

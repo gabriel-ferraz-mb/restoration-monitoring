@@ -1,0 +1,11 @@
+Mon Nov 25 18:38:36 2024
+streams
+PERMANENT
+Gabriel
+raster
+
+
+gerado por RSTREA~1
+RSTREA~1 --overwrite --verbose elevation="dem_grass" accumulation="f\
+low_accumulation" threshold=1000 mexp=0 stream_length=0 memory=300 s\
+tream_raster="streams" stream_vector="streams_vec"

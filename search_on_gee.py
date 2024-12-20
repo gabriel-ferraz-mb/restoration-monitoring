@@ -144,8 +144,8 @@ def split_aoi(aoi_gdf, grid_size=0.5):
     intersected_gdf = gpd.overlay(grid_gdf, aoi_gdf, how='intersection')
     return intersected_gdf
 
-gdf = gpd.read_file(r"C:\Projetos\bioflore\gbs-uganda\geo\shp\restoration_sites.shp")
-name = 'wwf'
+gdf = gpd.read_file(r"C:\Projetos\bioflore\bgci_II\geo\sites\all_sites\all_sites.shp")
+name = 'bgciII'
 
 KEY = r"C:\Projetos\bioflore\restoration_monitoring\bioflore-ee.json"
 session = get_earth_engine_connection(KEY)
@@ -154,30 +154,48 @@ ee.Initialize(session)
 extent = get_extent_as_geodf(gdf.to_crs(4326))
 
 dem = search_on_gee(extent, 'NASA/NASADEM_HGT/001', 'elevation',
-                    name, mosaic=False)
-chm = search_on_gee(extent, 'projects/meta-forest-monitoring-okw37/assets/CanopyHeight',
-                    'cover_code', name, mosaic=True)
+                    name, mosaic=False, scale = 30)
 soil_020 = search_on_gee(extent, "ISDASOIL/Africa/v1/texture_class",
-                         'texture_0_20', name, mosaic=False)
+                         'texture_0_20', name, mosaic=False, scale=30)
 soil_2050 = search_on_gee(extent, "ISDASOIL/Africa/v1/texture_class",
-                         'texture_20_50', name, mosaic=False)
-lulc = search_on_gee(extent, "ESA/WorldCover/v200",
-                         'Map', name, mosaic=True, buffer_km = 5)
+                         'texture_20_50', name, mosaic=False, scale=30)
 
-splited_aoi = split_aoi(extent, 1)
+splited_aoi = split_aoi(extent, 0.2)
 
 for idx, row in splited_aoi.iterrows():
-    extent = gpd.GeoDataFrame({'geometry': [row.geometry]}, crs=splited_aoi.crs)
+    aoi = gpd.GeoDataFrame({'geometry': [row.geometry]}, crs=splited_aoi.crs)
     try:
         output_dir = search_on_gee(
-            extent=extent,
-            source="WorldPop/GP/100m/pop_age_sex_cons_unadj",
-            band='population',
+            extent=aoi,
+            source= "ESA/WorldCover/v200",
+            band= 'Map',
             name=f"{name}_{idx}",  # Generate unique name for each operation
             mosaic=True,
-            scale= 100
+            scale= 10
         )
         print(f"Processed extent {idx}, output saved to {output_dir}")
     except Exception as e:
         print(f"Error processing extent {idx}: {e}")
+   
+data_tuples = [("ISDASOIL/Africa/v1/texture_class",'texture_0_20'),
+             ("ISDASOIL/Africa/v1/texture_class", 'texture_20_50'),
+             ("ISDASOIL/Africa/v1/bedrock_depth", 'mean_0_200')]
+
+for idx, row in gdf.iterrows():
+    aoi = get_extent_as_geodf(
+        gpd.GeoDataFrame({'geometry': [row.geometry]}, crs=gdf.crs))
+    label = row.Name
+    for tup in data_tuples:
+        try:
+            output_dir = search_on_gee(
+                extent=aoi,
+                source= tup[0],
+                band=   tup[1],
+                name=f"{name}_{label}",  # Generate unique name for each operation
+                mosaic=False,
+                scale= 30
+            )
+            print(f"Processed extent {idx}, output saved to {output_dir}")
+        except Exception as e:
+            print(f"Error processing extent {idx}: {e}")
 

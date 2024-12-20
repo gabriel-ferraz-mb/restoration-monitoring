@@ -224,7 +224,7 @@ def show_precipitation_data( CAR, lat_long, years_past):
     
     return ppt_df, ppt_df_year
 
-aoi = gpd.read_file(r"C:\Projetos\bioflore\gbs-uganda\geo\shp\restoration_sites.shp")
+aoi = gpd.read_file(r"C:\Projetos\bioflore\gbs-kenya\geo\shp\mount_kenya.shp")
 extent = get_extent_as_geodf(aoi)
 aoi_2d = remove_z(extent.to_crs(4326))
 
@@ -232,8 +232,8 @@ polygon = geometry_to_ee(aoi_2d)
 
 lat_long = polygon.centroid()
 
-ppt_df, ppt_df_year = show_precipitation_data(polygon, lat_long, 2)
-temp_df, temp_df_year = show_temperature_data(polygon, lat_long, 2)
+ppt_df, ppt_df_year = show_precipitation_data(polygon, lat_long, 10)
+temp_df, temp_df_year = show_temperature_data(polygon, lat_long, 5)
 
         
 def multi_plot_precipitation(df_ppt, ppt_df_year, paths):
@@ -301,10 +301,10 @@ def multi_plot_temp(temp_df, temp_df_year, paths):
 
 multi_plot_precipitation(
     ppt_df, ppt_df_year,
-        [r'C:\Projetos\bioflore\gbs-uganda\png\month_prec.png',
-             r'C:\Projetos\bioflore\gbs-uganda\png\year_prec.png'])
+        [r'C:\Projetos\bioflore\gbs-kenya\png\month_prec.png',
+             r'C:\Projetos\bioflore\gbs-kenya\png\year_prec.png'])
 
 multi_plot_temp(
     temp_df, temp_df_year,
-                [r'C:\Projetos\bioflore\gbs-uganda\png\month_temp.png',
-                     r'C:\Projetos\bioflore\gbs-uganda\png\year_temp.png'])
+                [r'C:\Projetos\bioflore\gbs-kenya\png\month_temp.png',
+                     r'C:\Projetos\bioflore\gbs-kenya\png\year_temp.png'])

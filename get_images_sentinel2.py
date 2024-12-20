@@ -8,6 +8,7 @@ import pandas as pd
 import geopandas as gpd
 import rasterio
 import requests
+from shapely.geometry import box
 from datetime import datetime
 from shapely.geometry import mapping
 from google.oauth2 import service_account
@@ -83,17 +84,40 @@ def get_bands(band_list: list):
         return bands
     return [band for band in bands if band['code'] in band_list]
 
+def get_extent_as_geodf(gdf):
+    # Get the total bounds of the GeoDataFrame
+    bounds = gdf.total_bounds  # Returns an array: [minx, miny, maxx, maxy]
+
+    # Create a bounding box (rectangle) using shapely
+    bbox = box(bounds[0], bounds[1], bounds[2], bounds[3])
+
+    # Create a new GeoDataFrame containing just this bounding box
+    extent_gdf = gpd.GeoDataFrame({'geometry': [bbox]}, crs=gdf.crs)
+
+    return extent_gdf
+
+
 def sentinel2_get_images(
     aoi: gpd.GeoDataFrame,
     start_date: str,
     end_date: str, 
-    granularity: str,
-    name: str,
+    granularity: str = '',
+    name: str = 'sentinel2_download',
     band_list: list = [],
     cloud_cover: int = 101,
     KEY: str = r"C:\Projetos\bioflore\gbs-madagascar\bioflore-ee.json",
     collection: str = "COPERNICUS/S2_SR_HARMONIZED"
 ):
+    
+    # aoi = site
+    # start_date = sd
+    # end_date = ed 
+    # granularity = ''
+    # name= name
+    # band_list = []
+    # cloud_cover = 100
+    # KEY = r"C:\Projetos\bioflore\restoration_monitoring\bioflore-ee.json"
+    # collection = "COPERNICUS/S2_SR_HARMONIZED"
     
     session = get_earth_engine_connection(KEY)
     ee.Initialize(session)
@@ -127,32 +151,37 @@ def sentinel2_get_images(
         dates = pd.date_range(start=start_date, end=end_date, freq="MS")
     elif granularity == "year":
         dates = pd.date_range(start=start_date, end=end_date, freq="YS")
+    
 
     image_list = ee.List([])
-    for date in dates:
-        
-        year = date.year
-        month = date.month
-        
-        if granularity == "month":
-            start_range = f"{year}-{month:02d}-01"
-            end_range = (date + pd.offsets.MonthEnd()).strftime("%Y-%m-%d")
-        elif granularity == "year":
-            start_range = f"{year}-01-01"
-            end_range = f"{year}-12-31"
+    if granularity in ("month", "year"):
+        for date in dates:
             
-        filtered_dataset = dataset.filterDate(start_range, end_range)
-        sorted_by_cloud_cover = filtered_dataset.sort('CLOUDY_PIXEL_PERCENTAGE')
-        least_cloudy_image = sorted_by_cloud_cover.first()
-        try:
-            if least_cloudy_image.getInfo()['type'] == 'Image':
-                image_list = image_list.add(least_cloudy_image)
-        except:
-            continue
+            year = date.year
+            month = date.month
+            
+            if granularity == "month":
+                start_range = f"{year}-{month:02d}-01"
+                end_range = (date + pd.offsets.MonthEnd()).strftime("%Y-%m-%d")
+            elif granularity == "year":
+                start_range = f"{year}-01-01"
+                end_range = f"{year}-12-31"
+                
+            filtered_dataset = dataset.filterDate(start_range, end_range)
+            sorted_by_cloud_cover = filtered_dataset.sort('CLOUDY_PIXEL_PERCENTAGE')
+            least_cloudy_image = sorted_by_cloud_cover.first()
+            try:
+                if least_cloudy_image.getInfo()['type'] == 'Image':
+                    image_list = image_list.add(least_cloudy_image)
+            except:
+                continue
 
     if image_list.size().getInfo() == 0:
-        image_list = dataset.toList(1, 0)
+        image_list = dataset.toList(dataset.size().getInfo(), 0)
 
+    # image = ee.Image(image_list.get(1)).clip(polygon)
+    # image.bandNames().getInfo()
+    
     description = []
     # i = 0
     # while image_list.size().getInfo() > 0:
@@ -161,7 +190,12 @@ def sentinel2_get_images(
         date = ee.Date(image.get('system:time_start')).format('YYYY-MM-dd').getInfo()
         file_name = f'{name}_{str(date)}.tif'
         directory = f'/tmp/sentinel2/{name}'
-
+        
+        output_file = f'{directory}/{file_name}'
+        if os.path.isfile(output_file):
+            print(f'{output_file} already exisits')
+            continue
+        
         if not os.path.exists(directory):
             os.makedirs(directory)
 
@@ -185,7 +219,6 @@ def sentinel2_get_images(
             extracted_files = collection_zip.namelist()
             # merge all bands into a single raster using rasterio
             band_files = [f'{directory}/extracted/{band}' for band in extracted_files]
-            output_file = f'{directory}/{file_name}'
             
             with rasterio.open(band_files[0]) as seed:
                 profile = seed.profile
@@ -221,34 +254,34 @@ def sentinel2_get_images(
 
     return description
 
-path = r"C:\Projetos\bioflore\gbs-uganda\geo\shp\restoration_sites.shp"
+path = r"C:\Projetos\bioflore\gbs-kenya\geo\shp\restoration_sites.shp"
 aoi = gpd.read_file(path)
+# aoi = aoi[aoi['label']=='reference2'].reset_index()
+
 aoi['geometry'] = aoi['geometry'].apply(remove_z)
 aoi.to_crs(4326, inplace=True)
-
+# extent = get_extent_as_geodf(aoi)
 # aoi =aoi[aoi['Name']== 'degraded'].reset_index()
 
 for i in range(0,len(aoi)):
-    site =aoi.iloc[[i]]
-    name = site['Name'][i]
+    site = aoi.iloc[[i]]
+    name = site['label'][i]
     # sd = site['Data'][i]
-    sd = '2018-01-01'
+    # name = 'uganda_extent_22'
+    sd = '2019-01-01'
+    # ed = '2022-12-31'
     ed = datetime.today().strftime('%Y-%m-%d')
     
-    if os.path.isdir(f'C:\\tmp\\sentinel2\\{name}'):
-        print (f'{name} already exists')
-        continue
-    else:
-        print(f"Starting download site {name}")
+    print(f"Starting download site {name}")
     
     try:
         d = sentinel2_get_images(
             aoi = site,
             start_date = sd,
             end_date = ed, 
-            granularity = 'month',
+            granularity = 'year',
             name= name,
-            band_list = ['B2','B3','B4','B8','B11','B12','SCL'],
+            band_list = ['B2','B3','B4','B5','B6','B7','B8','B8A','B11','B12','SCL'],
             cloud_cover = 100,
             KEY = r"C:\Projetos\bioflore\restoration_monitoring\bioflore-ee.json",
             collection = "COPERNICUS/S2_SR_HARMONIZED"

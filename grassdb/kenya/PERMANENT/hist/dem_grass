@@ -1,0 +1,11 @@
+Mon Nov 25 18:42:39 2024
+dem_grass
+PERMANENT
+Gabriel
+raster
+
+
+gerado por RINGDA~1
+RINGDA~1 --overwrite input="C:\Projetos\bioflore\gbs-kenya\geo\eleva\
+tion-dreinage\001.elevation.tif" output="dem_grass" memory=300 offse\
+t=0 num_digits=0

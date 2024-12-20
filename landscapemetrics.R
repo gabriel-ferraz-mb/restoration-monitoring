@@ -6,11 +6,10 @@ library(dplyr)
 
 ##################################
 
-setwd('C:\\Projetos\\bioflore\\gbs-uganda\\geo')
+setwd('C:\\Projetos\\bioflore\\gbs-kenya\\geo')
 
-landscape <- terra::rast("Map\\uganda\\Map.tif\\download.Map.tif")
-aoi <- polygons <- st_transform(st_zm(st_read('shp/restoration_sites.shp')),
-                                crs = crs(landscape))
+landscape <- terra::rast("Map\\lulc_merged_raster.tif")
+
 
 abreviations <- lsm_abbreviations_names
 options_landscapemetrics(to_disk = NULL)
@@ -36,7 +35,11 @@ utm_crs <- if (centroid_lat >= 0) {
 }
 
 utm_raster <- project(landscape, utm_crs)
-plot(utm_raster)
+aoi <- st_transform(st_zm(st_read('shp/mount_kenya.shp')),
+                    crs = crs(utm_raster))
+utm_raster <- mask(utm_raster, aoi)
+# plot(utm_raster)
+# check_landscape(utm_raster, verbose = TRUE)
 
 r <- calculate_lsm(
   utm_raster,
@@ -100,7 +103,7 @@ result <- merge(result, abreviations[, c("metric", "name")], by = "metric", all 
 result <- result[!duplicated(result), ]
 
 patches <- show_patches(
-  landscape,
+  utm_raster,
   class = "10",
   directions = 8,
   labels = F,
@@ -109,7 +112,7 @@ patches <- show_patches(
 )
 
 cores <- show_cores(
-  landscape,
+  utm_raster,
   directions = 8,
   class = "10",
   labels = FALSE,
