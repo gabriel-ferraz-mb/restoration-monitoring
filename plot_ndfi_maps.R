@@ -38,12 +38,18 @@ transform_to_utm <- function(sf_object) {
   return(utm_sf_object)
 }
 
-setwd('C:\\Projetos\\bioflore\\gbs-kenya')
+setwd('C:\\Projetos\\bioflore\\bgci_II')
 #2. Read in the shapefile containing the polygons.
 
-shapefile_path <- "geo\\shp\\restoration_sites.shp"
+shapefile_path <- "geo\\sites\\SITES+REF\\all_sites.shp"
 polygons <- st_read(shapefile_path)
+# label_list <- c('La_Pena', 'HUB_CERRADO_CECAP', 'HUB_CERRADO_NA_FLORESTA')  # Replace with your actual list of strings
+# # Filter the rows where 'label' is in the list
+# polygons <- polygons %>%
+#   filter(name %in% label_list)%>%
+#   mutate(name= gsub("_", "-", name))
 # polygons <- transform_to_utm(polygons)
+
 #3. List all the raster files in your directory.
 
 raster_directory <- "geo\\NDFI"
@@ -54,7 +60,17 @@ raster_files <- list.files(raster_directory,
 
 #4. Loop through each raster file and match it with the corresponding polygon.
 for (raster_file in raster_files) {
+  # raster_file <- raster_files[[2]]
   tryCatch({
+    # Read the raster data
+    raster_data <- rast(raster_file)
+    
+    non_na_count <- sum(!is.na(values(raster_data)))
+    # If all values are NA, skip further processing for this raster
+    if (non_na_count == 0) {
+      message(paste("Skipping", raster_file, "as it contains only NA values."))
+      next
+    }
     # Extract the label and date from the raster file name
     label_date <- gsub(".tif", "", basename(raster_file))
     
@@ -66,18 +82,15 @@ for (raster_file in raster_files) {
     # Filter the polygons to find the corresponding polygon
     matching_polygon <- polygons[polygons$Name == label, ]
     
-  
-    # Read the raster data
-    raster_data <- rast(raster_file)
     matching_polygon <- st_transform(matching_polygon, crs = as.character(crs(raster_data)))
     
     # Convert raster to data frame and rename columns appropriately
     raster_df <- as.data.frame(terra::as.data.frame(raster_data, xy = TRUE), xy = TRUE)
-    names(raster_df) <- c("x", "y", "value")
+    names(raster_df) <- c("lon", "lat", "NDFI")
     
     # Create a ggplot
     p <- ggplot() +
-      geom_raster(data = raster_df, aes(x = x, y = y, fill = value)) +
+      geom_raster(data = raster_df, aes(x = lon, y = lat, fill = NDFI)) +
       geom_sf(data = matching_polygon, fill = NA, color = "red", size = 1) +
       theme_minimal() +
       scale_fill_gradientn(limits = c(-1, 1), colors = scales::viridis_pal()(7)) + 

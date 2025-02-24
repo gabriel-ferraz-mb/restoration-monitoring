@@ -254,20 +254,25 @@ def sentinel2_get_images(
 
     return description
 
-path = r"C:\Projetos\bioflore\gbs-kenya\geo\shp\restoration_sites.shp"
+path = r"C:\Projetos\bioflore\bgci_II\geo\sites\SITES+REF\all_sites.shp"
 aoi = gpd.read_file(path)
-# aoi = aoi[aoi['label']=='reference2'].reset_index()
+
+# label_list = ['La-Pena','La-Pena.ref',
+#               'HUB-CERRADO-NA-FLORESTA','HUB-CERRADO-CECAP']
+
+# aoi = aoi[aoi['Name'].isin(label_list)].reset_index(drop=True)
 
 aoi['geometry'] = aoi['geometry'].apply(remove_z)
 aoi.to_crs(4326, inplace=True)
 # extent = get_extent_as_geodf(aoi)
-# aoi =aoi[aoi['Name']== 'degraded'].reset_index()
+# aoi =aoi[aoi['label']== 'Siru'].reset_index()
 
 for i in range(0,len(aoi)):
     site = aoi.iloc[[i]]
-    name = site['label'][i]
+    name = site['Name'][i]
     # sd = site['Data'][i]
-    # name = 'uganda_extent_22'
+    name = name.replace("_","-")
+    
     sd = '2019-01-01'
     # ed = '2022-12-31'
     ed = datetime.today().strftime('%Y-%m-%d')
@@ -279,7 +284,7 @@ for i in range(0,len(aoi)):
             aoi = site,
             start_date = sd,
             end_date = ed, 
-            granularity = 'year',
+            granularity = '',
             name= name,
             band_list = ['B2','B3','B4','B5','B6','B7','B8','B8A','B11','B12','SCL'],
             cloud_cover = 100,

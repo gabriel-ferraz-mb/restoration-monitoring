@@ -144,8 +144,8 @@ def split_aoi(aoi_gdf, grid_size=0.5):
     intersected_gdf = gpd.overlay(grid_gdf, aoi_gdf, how='intersection')
     return intersected_gdf
 
-gdf = gpd.read_file(r"C:\Projetos\bioflore\bgci_II\geo\sites\all_sites\all_sites.shp")
-name = 'bgciII'
+gdf = gpd.read_file(r"C:\Projetos\bioflore\revalue\geo\WMA_Boundaries_shp\all_project_area_dissolved.shp")
+name = 'revalue'
 
 KEY = r"C:\Projetos\bioflore\restoration_monitoring\bioflore-ee.json"
 session = get_earth_engine_connection(KEY)
@@ -153,12 +153,11 @@ ee.Initialize(session)
 
 extent = get_extent_as_geodf(gdf.to_crs(4326))
 
-dem = search_on_gee(extent, 'NASA/NASADEM_HGT/001', 'elevation',
-                    name, mosaic=False, scale = 30)
-soil_020 = search_on_gee(extent, "ISDASOIL/Africa/v1/texture_class",
-                         'texture_0_20', name, mosaic=False, scale=30)
-soil_2050 = search_on_gee(extent, "ISDASOIL/Africa/v1/texture_class",
-                         'texture_20_50', name, mosaic=False, scale=30)
+data_tuples = [("ISDASOIL/Africa/v1/texture_class",'texture_0_20'),
+             ("ISDASOIL/Africa/v1/texture_class", 'texture_20_50'),
+             ("ISDASOIL/Africa/v1/bedrock_depth", 'mean_0_200'),
+             ('NASA/NASADEM_HGT/001', 'elevation'),
+             ("ESA/WorldCover/v200", "Map")]
 
 splited_aoi = split_aoi(extent, 0.2)
 
@@ -168,7 +167,7 @@ for idx, row in splited_aoi.iterrows():
         output_dir = search_on_gee(
             extent=aoi,
             source= "ESA/WorldCover/v200",
-            band= 'Map',
+            band= "Map",
             name=f"{name}_{idx}",  # Generate unique name for each operation
             mosaic=True,
             scale= 10
@@ -177,9 +176,7 @@ for idx, row in splited_aoi.iterrows():
     except Exception as e:
         print(f"Error processing extent {idx}: {e}")
    
-data_tuples = [("ISDASOIL/Africa/v1/texture_class",'texture_0_20'),
-             ("ISDASOIL/Africa/v1/texture_class", 'texture_20_50'),
-             ("ISDASOIL/Africa/v1/bedrock_depth", 'mean_0_200')]
+
 
 for idx, row in gdf.iterrows():
     aoi = get_extent_as_geodf(

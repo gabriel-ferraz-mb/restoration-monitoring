@@ -18,7 +18,7 @@ library(sf)
 
 suppressWarnings(expr)
 
-setwd('C:\\Projetos\\bioflore\\gbs-kenya')
+setwd('C:\\Projetos\\bioflore\\bgci_II')
 
 get_utm_zone <- function(lon) {
   return(floor((lon + 180) / 6) + 1)
@@ -56,7 +56,6 @@ files <- grep(list.files(path="geo\\sentinel2",full.names = T,recursive = T),
                pattern = '.xml', invert =T, value = T)
 out <- files[lengths(files)!=0]
 
-
 endmembers<-read.csv("spreadsheets/em.txt")
 colnames(endmembers)<-c("class","Blue","Green","Red","NIR")
 
@@ -66,13 +65,21 @@ p <- ggplot(melted, aes(WaveLength, Reflectance, color = Class)) +
   geom_line(aes(group=Class)) + ggtitle('Kenya project "Reflectance by class"')
 p
 
-shp = st_read("geo\\shp\\restoration_sites.shp")
-# shp <- transform_to_utm(shp)
+shp = st_read(
+  "geo\\sites\\SITES+REF\\all_sites.shp"
+  )
+
+# label_list <- c('La_Pena', 'HUB_CERRADO_CECAP', 'HUB_CERRADO_NA_FLORESTA')  # Replace with your actual list of strings
+# # Filter the rows where 'label' is in the list
+# shp <- shp %>%
+#   filter(name %in% label_list)%>%
+#   mutate(name= gsub("_", "-", name))
 
 for (name in out){
   # name = out[[1]]
-  label <- str_split(str_split(name, '_')[[1]][1], '/')[[1]][2]
+  label <- str_split(name, '/')[[1]][2]
   product <- str_replace_all(name, c(sentinel2= "NDFI", .tif="_NDFI.tif"))
+  
   if (file.exists(product)){
     next
   }
@@ -84,13 +91,13 @@ for (name in out){
   
   scl <- data[['SCL']]
   valid_mask <- (scl == 4 | scl == 5)
-  data <- mask(data, valid_mask)
+  data <- mask(data, valid_mask, maskvalue = TRUE,inverse = TRUE)
   imgBrick <- data[[c('B2','B3','B4','B8')]]
   
   # Altere o nome das bandas
   imgBrick@data@names<-c("Blue","Green","Red","NIR")
     
-  polygon <- shp[shp$label== label,]$geometry
+  polygon <- shp[shp$Name== label,]$geometry
   polygon <- st_transform(polygon, crs = as.character(crs(imgBrick)))
   cropped_raster <- crop(imgBrick, as_Spatial(st_zm(polygon)))
   masked_raster <- mask(cropped_raster, as(st_zm(polygon), "Spatial"))
@@ -106,11 +113,19 @@ for (name in out){
 }
 
 ndfi.files <- list.files(path="geo\\NDFI", full.names = T, recursive = T)
+
+patterns <- c('HUB-CERRADO', 'La-Pena')  # Add any additional patterns here
+# ndfi.files <- ndfi.files[vapply(
+#   ndfi.files, function(file) any(sapply(patterns, function(pattern) grepl(pattern, file))), logical(1))]
+
 result <- data.frame()
 
 for (name in ndfi.files){
-  date <- as.Date(str_split(name, '_')[[1]][2], "%Y-%m-%d")
-  talhao <- str_split(str_split(name, '_')[[1]][1], '/')[[1]][2]
+  # name = ndfi.files[[1]]
+  date <- as.Date(
+    str_split(str_split(name, '/')[[1]][3],"_")[[1]][2],
+  "%Y-%m-%d")
+  talhao <- str_split(str_split(name, '/')[[1]][3],"_")[[1]][1]
   data <- brick(name)[[1]]
   x.stats <- data.frame(talhao=talhao,
     data=date,
@@ -125,9 +140,10 @@ write.csv(result,
           "spreadsheets\\result_sites_ndfi.csv",
           row.names = FALSE)
 
-tab <- read.csv("spreadsheets\\result_sites_ndfi.csv")
-tab$ndfi_mean<-as.numeric(tab$ndfi_mean)
-tab$date <- as.Date(tab$date)
+# tab <- read.csv("spreadsheets\\result_sites_ndfi.csv")
+# tab$ndfi_mean<-as.numeric(tab$ndfi_mean)
+# tab$date <- as.Date(tab$date)
+tab <- result
 tab = tab[complete.cases(tab), ]
 
 result_bspline <- data.frame(date=as.Date(character()),
@@ -152,7 +168,7 @@ for (label in labels){
   pivoted_data <- pivoted_data[order(pivoted_data$date),]
   
   date_non_na <- pivoted_data %>% filter(!is.na(pivoted_data[[label]])) %>% slice(1) %>% pull(date)
-  #pivoted_data %>% filter(date >= date_non_na)
+  pivoted_data %>% filter(date >= date_non_na)
   # Define the specific range for the x-axis
   start_date <- pivoted_data[1,1]$date 
   end_date <- pivoted_data[nrow(pivoted_data),1]$date
@@ -183,6 +199,13 @@ for (label in labels){
 }
 write.csv(result_bspline, "spreadsheets/bspline_ndfi_lmite.csv", row.names=FALSE)
 
+result_bspline<-read.table("spreadsheets/bspline_ndfi_lmite.csv", sep=",")
+colnames(result_bspline)<-result_bspline[1,]
+result_bspline<-result_bspline[2:nrow(result_bspline),]
+result_bspline$ndvi_mean<-as.numeric(result_bspline$ndfi_mean)
+result_bspline$date <- as.Date(result_bspline$date)
+
+
 pivoted_data <- result_bspline %>% pivot_wider(
   id_cols = date,
   names_from = talhao,
@@ -192,21 +215,43 @@ pivoted_data <- result_bspline %>% pivot_wider(
 pivoted_data$date <- as.Date(pivoted_data$date) # Ensure dates are in Date format
 pivoted_data <- pivoted_data[order(pivoted_data$date),]
 
-date_non_na <- pivoted_data %>% filter(!is.na(pivoted_data[[label]])) %>% slice(1) %>% pull(date)
-pivoted_data %>% filter(date >= date_non_na)
-# # Define the specific range for the x-axis
-start_date <- pivoted_data[1,1]$date
-end_date <- pivoted_data[nrow(pivoted_data),1]$date
+labels <- list(
+  c("ABP","2010-01-01"),
+  c("Bigodi","1998-01-01"),
+  c("Dilips","2020-01-01"),
+  c("IPEECOSIA","2020-01-01"),
+  c("Jubiya","2021-01-01"),
+  c("KB","2016-01-01"),
+  c("KOREN","2021-01-01"),
+  c("LUM","2017-01-01"),
+  c("Magaca","2021-01-01"),
+  c("MARLENE","2019-06-01"),
+  c("Nteko","2014-01-01"),
+  c("Pandal","2019-06-01"),
+  c("RPPNRENOPOLIS","1950-01-01"),
+  c("Soraypampa","2015-01-01"),
+  c("Wangari","2018-01-01"),
+  c("HUB-CERRADO-NA-FLORESTA","2000-01-01"),
+  c("HUB-CERRADO-CECAP","2017-01-01"),
+  c("La-Pena","2021-01-01")
+)
 
-RE = 'reference2'
-BRE = ''
-
-labels = labels[! labels %in% c(RE,BRE)] 
-
-for (label in labels){
-  # label = labels[[1]]
+for (i in labels){
+  
+  label = i[[1]]
+  specific_date = i[[2]]
+  
+  label = str_replace_all(label,"_","-")
+  
+  date_non_na <- pivoted_data %>% filter(!is.na(pivoted_data[[label]])) %>% slice(1) %>% pull(date)
+  pivoted_data %>% filter(date >= date_non_na)
+  # # Define the specific range for the x-axis
+  start_date <- pivoted_data[1,1]$date
+  end_date <- pivoted_data[nrow(pivoted_data),1]$date
+  
   # Open a new graphics window (specific to Windows)
-  index_name = "NDVI"
+  RE = paste0(label, ".ref")
+  index_name = "NDFI"
   #win.graph(10.90625, 16.83333)
   
   #jpeg(filename=paste0(label,".png"))
@@ -229,54 +274,54 @@ for (label in labels){
   lines(y, x_re, col = 'green', lwd=3.5)
   
   
-  if(BRE != ''){
-    x_bre <- pivoted_data[[BRE]]
-    lines(y, x_bre, col = 'orange', lwd=3.5)
-    legend('bottomright', legend=c("Restoration Area", "Reference Area","Degraded Area"),
-           col=c("black", "green",'orange'), lty=c(1,1,1,2), cex=0.8,lwd=c(3.5,3.5,3.5,1))
-  }
-  else{
+  specific_date_index <- which(y == specific_date)
+  if (length(specific_date_index) > 0) {
+    # If the specific date is found, get the numeric position for plotting
+    x_pos <- as.numeric(y[specific_date_index])
+    
+    # Add intermittent vertical line at the specific date
+    n_segments <- 50
+    ymin <- -1  # Ensure this value suits your plot's y-limits
+    ymax <- 1
+    segment_length <- (ymax - ymin) / (n_segments * 2)
+    
+    for (j in 0:(n_segments - 1)) {
+      segments(x_pos, ymin + j * 2 * segment_length, x_pos, ymin + (j * 2 + 1) * segment_length, col = "red")
+    }
+    legend('bottomright', legend=c("Restoration Area", "Reference Area","Baseline"),
+           col=c("black", "green",'red'), lty=c(1,1,1,2), cex=0.8,lwd=c(3.5,3.5,3.5,1))
+  } else {
+    warning(paste("Specific date", specific_date, "not found in dates vector for label", label))
     legend('bottomright', legend=c("Restoration Area", "Reference Area"),
-           col=c("black", "green"), lty=c(1,1), cex=0.8,lwd=c(3.5,3.5))
+           col=c("black", "green"), lty=c(1,1,1,2), cex=0.8,lwd=c(3.5,3.5,3.5,1))
   }
-  # specific_date <- as.Date(shp[shp$identifier_akvo==label,]$planting_date)
   
-  # Add intermittent vertical line
-  # n_segments <- 50  # Number of segments for the intermittent line
-  # x_pos <- as.numeric(specific_date)
-  # ymin <- -1
-  # ymax <- 1
-  # segment_length <- (ymax - ymin) / (n_segments * 2)
-  # 
-  # for (i in 0:(n_segments-1)) {
-  #   segments(x_pos, ymin + i * 2 * segment_length, x_pos, ymin + (i * 2 + 1) * segment_length, col = "red")
-  # }
   min_points_x <- c()
   min_points_y <- c()
   
   # Find and plot minimum points along the spline curve for each year within the range
-  years <- unique(format(y, "%Y"))
-  for (year in years) {
-    in_year <- format(y, "%Y") == year
-    if (sum(in_year) > 0) {
-      # Find the minimum value of the spline within this year
-      min_val_index <- which.min(x[in_year])
-      min_date <- y[in_year][min_val_index]
-      min_val <- x[in_year][min_val_index]
-      
-      # Accumulate the minimum points
-      min_points_x <- c(min_points_x, min_date)
-      min_points_y <- c(min_points_y, min_val)
-      
-      # Plot the minimum point
-      points(min_date, min_val, col = "#0101ff", pch=19)
-    }
-  }
-  
-  # Connect the minimum points with lines
-  if (length(min_points_x) > 1) {
-    lines(min_points_x, min_points_y, col = "#0101ff", lty=1)
-  }
+  # years <- unique(format(y, "%Y"))
+  # for (year in years) {
+  #   in_year <- format(y, "%Y") == year
+  #   if (sum(in_year) > 0) {
+  #     # Find the minimum value of the spline within this year
+  #     min_val_index <- which.min(x[in_year])
+  #     min_date <- y[in_year][min_val_index]
+  #     min_val <- x[in_year][min_val_index]
+  #     
+  #     # Accumulate the minimum points
+  #     min_points_x <- c(min_points_x, min_date)
+  #     min_points_y <- c(min_points_y, min_val)
+  #     
+  #     # Plot the minimum point
+  #     points(min_date, min_val, col = "#0101ff", pch=19)
+  #   }
+  # }
+  # 
+  # # Connect the minimum points with lines
+  # if (length(min_points_x) > 1) {
+  #   lines(min_points_x, min_points_y, col = "#0101ff", lty=1)
+  # }
 }
 
 #dev.off()

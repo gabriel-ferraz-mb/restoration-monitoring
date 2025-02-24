@@ -10,7 +10,7 @@ rm(list = ls())
 
 suppressWarnings(expr)
 
-setwd('C:\\Projetos\\bioflore\\gbs-kenya')
+setwd('C:\\Projetos\\bioflore\\bgci_II')
 
 files <- grep(list.files(path="geo\\sentinel2",full.names = T, recursive = T),
                     pattern = '.aux', invert = T, value = T)
@@ -26,7 +26,7 @@ for (name in files){
   date <- as.Date(str_replace(str_split(name, '_')[[1]][-1],'.tif',''),
                               "%Y-%m-%d")
   
-  talhao <- str_split(str_split(name, '_')[[1]][1], '/')[[1]][2]
+  talhao <-  str_split(name, '/')[[1]][2]
   data <- brick(name)
   bnames <- c('B2','B3','B4','B5','B6','B7','B8','B8A','B11','B12','SCL')
   names(data) <- bnames
@@ -129,14 +129,36 @@ pivoted_data %>% filter(date >= date_non_na)
 start_date <- pivoted_data[1,1]$date
 end_date <- pivoted_data[nrow(pivoted_data),1]$date
 
-RE = 'reference2'
+# RE = 'reference2'
 BRE = ''
+# 
+# labels = labels[! labels %in% c(RE,BRE)]
 
-labels = labels[! labels %in% c(RE,BRE)] 
+labels <- list(
+  "ABP",
+  "Bigodi",
+  "Dilips",
+  "IPEECOSIA",
+  "Jubiya",
+  "KB",
+  "KOREN",
+  "LUM",
+  "Magaca",
+  "MARLENE",
+  "Nteko",
+  "Pandal",
+  "RPPNRENOPOLIS",
+  "Soraypampa",
+  "Wangari"
+)
+
 for (label in labels){
   # label = labels[[1]]
   # Open a new graphics window (specific to Windows)
+  RE = paste0(label, ".ref")
+  
   index_name = "NDMI"
+  
   #win.graph(10.90625, 16.83333)
   
   #jpeg(filename=paste0(label,".png"))
